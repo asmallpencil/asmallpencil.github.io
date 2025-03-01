@@ -3,6 +3,7 @@
 <head>
     <title>铅笔站开发中</title>
     <style>
+        /* 基础样式 */
         body {
             margin: 0;
             overflow: hidden;
@@ -19,6 +20,7 @@
         canvas {
             border: 1px solid #333;
         }
+        /* 游戏UI */
         #ui {
             position: fixed;
             top: 100px;
@@ -32,11 +34,13 @@
             border-radius: 5px;
             cursor: pointer;
             display: inline-block;
+            transition: all 0.3s;
         }
         .active {
             background: #666;
             box-shadow: 0 0 10px #ffd700;
         }
+        /* 游戏结束提示 */
         #gameOver {
             position: fixed;
             top: 50%;
@@ -46,6 +50,7 @@
             font-size: 48px;
             display: none;
         }
+        /* 敌人血条 */
         .hp-bar {
             position: absolute;
             width: 30px;
@@ -70,37 +75,38 @@
     <div id="gameOver">游戏结束！</div>
 
     <script>
-        // 初始化核心对象
+        // 游戏核心对象初始化
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let gameActive = true;
 
-        // 游戏参数配置
+        /* 游戏参数配置 */
         const CONFIG = {
             PLAYER: {
-                BULLET_SIZE: 6,
-                BASE_FIRE_RATE: 10
+                BULLET_SIZE: 6,      // 子弹大小调整为原来的2倍（原为3）
+                BASE_FIRE_RATE: 10   // 基础子弹速度
             },
             ENEMY: {
                 RED: { hp: 1, speed: 2, value: 10, spawnChance: 0.02, color: 'red' },
-                YELLOW: { hp: 5, speed: 1, value: 50, spawnChance: 0.005, color: 'yellow' }
+                YELLOW: { hp: 5, speed: 1, value: 50, spawnChance: 0.01, color: 'yellow' }
             },
             SKILLS: {
-                EXPLOSIVE: { cost: 200, interval: 1000 },
-                SHOTGUN: { cost: 100, interval: 500 },
-                ICE: { cost: 50, cooldown: 2000 }
+                EXPLOSIVE: { cost: 200, interval: 1000 },  // 高爆弹参数
+                SHOTGUN: { cost: 100, interval: 500 },     // 散弹参数
+                ICE: { cost: 50, cooldown: 2000 }          // 寒冰弹参数
             }
         };
 
         // 游戏状态
         let gold = 0;
         let playerHP = 100;
+        let activeEffects = [];
         let skillStates = {
             explosive: { active: false, lastFire: 0 },
             shotgun: { active: false, lastFire: 0 }
         };
 
-        // 初始化画布
+        /* 初始化画布 */
         function initCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight - 80;
@@ -124,7 +130,7 @@
         let enemies = [];
         let bullets = [];
 
-        // 输入控制
+        /* 输入控制系统 */
         let input = {
             touchX: 0,
             isTouching: false,
@@ -140,7 +146,7 @@
         canvas.addEventListener('touchmove', e => input.touchX = e.touches[0].clientX);
         canvas.addEventListener('touchend', () => input.isTouching = false);
 
-        // 技能系统
+        /* 技能系统 */
         document.querySelectorAll('.skillBtn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const type = this.id.replace('Btn', '');
@@ -148,6 +154,7 @@
             });
         });
 
+        // 切换技能状态
         function toggleSkill(type) {
             if (type === 'explosive' || type === 'shotgun') {
                 skillStates[type].active = !skillStates[type].active;
@@ -155,6 +162,66 @@
             }
         }
 
+        /* 武器系统 */
+        // 自动武器处理
+        function handleAutoWeapons() {
+            const now = Date.now();
+            
+            // 高爆弹系统
+            if (skillStates.explosive.active) {
+                if (now - skillStates.explosive.lastFire > CONFIG.SKILLS.EXPLOSIVE.interval) {
+                    if (gold >= CONFIG.SKILLS.EXPLOSIVE.cost) {
+                        fireExplosive();
+                        gold -= CONFIG.SKILLS.EXPLOSIVE.cost;
+                        skillStates.explosive.lastFire = now;
+                    }
+                }
+            }
+
+            // 散弹系统
+            if (skillStates.shotgun.active) {
+                if (now - skillStates.shotgun.lastFire > CONFIG.SKILLS.SHOTGUN.interval) {
+                    if (gold >= CONFIG.SKILLS.SHOTGUN.cost) {
+                        fireShotgun();
+                        gold -= CONFIG.SKILLS.SHOTGUN.cost;
+                        skillStates.shotgun.lastFire = now;
+                    }
+                }
+            }
+        }
+
+        // 发射高爆弹
+        function fireExplosive() {
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                speed: 15,
+                angle: player.angle,
+                isExplosive: true,
+                color: 'orange',
+                size: CONFIG.PLAYER.BULLET_SIZE
+            });
+        }
+
+        // 发射散弹（修改为100发30度散射）
+        function fireShotgun() {
+            const spreadRange = Math.PI/6; // 30度换算为弧度
+            const roundCount = 100;        // 弹片数量
+            
+            for(let i = 0; i < roundCount; i++) {
+                const angle = player.angle - spreadRange/2 + (spreadRange * Math.random());
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    speed: 15,
+                    angle: angle,
+                    color: 'white',
+                    size: CONFIG.PLAYER.BULLET_SIZE
+                });
+            }
+        }
+
+        /* 游戏对象管理系统 */
         // 生成敌人
         function spawnEnemy(type) {
             enemies.push({
@@ -168,7 +235,7 @@
             });
         }
 
-        // 碰撞检测
+        /* 碰撞检测系统 */
         function checkCollision(bullet, enemy) {
             return bullet.x > enemy.x &&
                    bullet.x < enemy.x + enemy.width &&
@@ -176,7 +243,7 @@
                    bullet.y < enemy.y + enemy.height;
         }
 
-        // 游戏主循环
+        /* 游戏主循环 */
         function gameLoop() {
             if (!gameActive || playerHP <= 0) {
                 document.getElementById('gameOver').style.display = 'block';
@@ -202,6 +269,9 @@
                 size: CONFIG.PLAYER.BULLET_SIZE
             });
 
+            // 处理自动武器
+            handleAutoWeapons();
+
             // 生成敌人
             Object.keys(CONFIG.ENEMY).forEach(type => {
                 const cfg = CONFIG.ENEMY[type];
@@ -210,7 +280,21 @@
                 }
             });
 
-            // 更新子弹
+            // 更新所有对象状态
+            updateObjects();
+            
+            // 绘制游戏元素
+            drawGameObjects();
+
+            // 更新UI
+            updateUI();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 更新所有游戏对象
+        function updateObjects() {
+            // 更新子弹状态
             bullets.forEach((bullet, bIndex) => {
                 bullet.x += bullet.speed * Math.cos(bullet.angle);
                 bullet.y += bullet.speed * Math.sin(bullet.angle);
@@ -237,7 +321,7 @@
                 });
             });
 
-            // 更新敌人
+            // 更新敌人状态
             enemies.forEach((enemy, index) => {
                 enemy.y += enemy.speed;
                 if (enemy.y > canvas.height) {
@@ -245,7 +329,10 @@
                     enemies.splice(index, 1);
                 }
             });
+        }
 
+        // 绘制所有游戏对象
+        function drawGameObjects() {
             // 绘制玩家
             ctx.fillStyle = '#666';
             ctx.fillRect(
@@ -266,11 +353,11 @@
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // 绘制子弹
+            // 绘制子弹（调整为双倍大小）
             bullets.forEach(bullet => {
                 ctx.fillStyle = bullet.color;
                 ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, bullet.size, 0, Math.PI*2);
+                ctx.arc(bullet.x, bullet.y, bullet.size, 20, Math.PI*20);
                 ctx.fill();
             });
 
@@ -279,7 +366,7 @@
                 ctx.fillStyle = enemy.color;
                 ctx.fillRect(enemy.x, enemy.y, 30, 30);
                 
-                // 血条
+                // 血条系统
                 ctx.fillStyle = 'red';
                 ctx.fillRect(enemy.x, enemy.y - 5, 30, 3);
                 ctx.fillStyle = 'lime';
@@ -290,13 +377,13 @@
                     3
                 );
             });
+        }
 
-            // 更新UI
+        // 更新UI状态
+        function updateUI() {
             document.getElementById('hpDisplay').textContent = 
                 `生命值：${Math.min(100, playerHP.toFixed(1))}%`;
             document.getElementById('goldDisplay').textContent = `金币：${gold}`;
-
-            requestAnimationFrame(gameLoop);
         }
 
         // 启动游戏
