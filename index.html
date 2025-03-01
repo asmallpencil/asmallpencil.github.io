@@ -1,14 +1,14 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>铅笔博客:施工中...</title>
+    <title>铅笔站开发中</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: #000;
             touch-action: none;
+            font-family: Arial;
         }
         #gameTitle {
             color: white;
@@ -19,25 +19,99 @@
         canvas {
             border: 1px solid #333;
         }
+        #ui {
+            position: fixed;
+            top: 100px;
+            left: 20px;
+            color: white;
+        }
+        .skillBtn {
+            padding: 10px;
+            margin: 5px;
+            background: #444;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .active {
+            background: #666;
+            box-shadow: 0 0 10px #ffd700;
+        }
+        #gameOver {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            font-size: 48px;
+            display: none;
+        }
+        .hp-bar {
+            position: absolute;
+            width: 30px;
+            height: 3px;
+            background: red;
+            top: -5px;
+        }
     </style>
 </head>
 <body>
     <h1 id="gameTitle">铅笔站开发中</h1>
     <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="hpDisplay">生命值：100%</div>
+        <div id="goldDisplay">金币：0</div>
+        <div>
+            <div id="explosiveBtn" class="skillBtn">高爆弹 [200]</div>
+            <div id="shotgunBtn" class="skillBtn">散弹 [100]</div>
+            <div id="iceBtn" class="skillBtn">寒冰弹 [50]</div>
+        </div>
+    </div>
+    <div id="gameOver">游戏结束！</div>
 
     <script>
+        // 初始化核心对象
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // 设置画布尺寸
-        function resizeCanvas() {
+        let gameActive = true;
+
+        // 游戏参数配置
+        const CONFIG = {
+            PLAYER: {
+                BULLET_SIZE: 6,
+                BASE_FIRE_RATE: 10
+            },
+            ENEMY: {
+                RED: { hp: 1, speed: 2, value: 10, spawnChance: 0.02, color: 'red' },
+                YELLOW: { hp: 5, speed: 1, value: 50, spawnChance: 0.005, color: 'yellow' }
+            },
+            SKILLS: {
+                EXPLOSIVE: { cost: 200, interval: 1000 },
+                SHOTGUN: { cost: 100, interval: 500 },
+                ICE: { cost: 50, cooldown: 2000 }
+            }
+        };
+
+        // 游戏状态
+        let gold = 0;
+        let playerHP = 100;
+        let skillStates = {
+            explosive: { active: false, lastFire: 0 },
+            shotgun: { active: false, lastFire: 0 }
+        };
+
+        // 初始化画布
+        function initCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight - 80;
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight - 80;
+            });
         }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        initCanvas();
 
-        // 游戏对象
+        // 玩家对象
         const player = {
             x: canvas.width/2,
             y: canvas.height - 30,
@@ -46,127 +120,181 @@
             angle: 0
         };
 
+        // 游戏对象池
         let enemies = [];
         let bullets = [];
-        let touchX = 0;
-        let isTouching = false;
 
-        // 触摸事件处理
-        canvas.addEventListener('touchstart', (e) => {
-            isTouching = true;
-            touchX = e.touches[0].clientX;
+        // 输入控制
+        let input = {
+            touchX: 0,
+            isTouching: false,
+            mouseX: canvas.width/2
+        };
+
+        // 事件监听
+        canvas.addEventListener('mousemove', e => input.mouseX = e.clientX);
+        canvas.addEventListener('touchstart', e => {
+            input.isTouching = true;
+            input.touchX = e.touches[0].clientX;
+        });
+        canvas.addEventListener('touchmove', e => input.touchX = e.touches[0].clientX);
+        canvas.addEventListener('touchend', () => input.isTouching = false);
+
+        // 技能系统
+        document.querySelectorAll('.skillBtn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const type = this.id.replace('Btn', '');
+                toggleSkill(type);
+            });
         });
 
-        canvas.addEventListener('touchmove', (e) => {
-            touchX = e.touches[0].clientX;
-        });
-
-        canvas.addEventListener('touchend', () => {
-            isTouching = false;
-        });
+        function toggleSkill(type) {
+            if (type === 'explosive' || type === 'shotgun') {
+                skillStates[type].active = !skillStates[type].active;
+                document.getElementById(`${type}Btn`).classList.toggle('active', skillStates[type].active);
+            }
+        }
 
         // 生成敌人
-        function spawnEnemy() {
+        function spawnEnemy(type) {
             enemies.push({
+                ...CONFIG.ENEMY[type.toUpperCase()],
+                type: type,
                 x: Math.random() * (canvas.width - 30),
                 y: 0,
                 width: 30,
                 height: 30,
-                health: 1
+                currentHP: CONFIG.ENEMY[type.toUpperCase()].hp
             });
         }
 
-        // 游戏循环
+        // 碰撞检测
+        function checkCollision(bullet, enemy) {
+            return bullet.x > enemy.x &&
+                   bullet.x < enemy.x + enemy.width &&
+                   bullet.y > enemy.y &&
+                   bullet.y < enemy.y + enemy.height;
+        }
+
+        // 游戏主循环
         function gameLoop() {
+            if (!gameActive || playerHP <= 0) {
+                document.getElementById('gameOver').style.display = 'block';
+                return;
+            }
+
+            // 清空画布
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 更新玩家角度（改进灵敏度）
-            if(isTouching) {
-                const dx = touchX - player.x;
-                // 修改角度计算公式，使用固定小值提高灵敏度
-                player.angle = Math.atan2(-100, dx); // dy固定为-1
-            }
+            // 更新玩家角度
+            const aimPosition = input.isTouching ? input.touchX : input.mouseX;
+            const dx = aimPosition - player.x;
+            player.angle = Math.atan2(-20, dx);
+
+            // 自动发射基础子弹
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                speed: CONFIG.PLAYER.BASE_FIRE_RATE,
+                angle: player.angle,
+                color: 'yellow',
+                size: CONFIG.PLAYER.BULLET_SIZE
+            });
 
             // 生成敌人
-            if(Math.random() < 0.2) spawnEnemy();
+            Object.keys(CONFIG.ENEMY).forEach(type => {
+                const cfg = CONFIG.ENEMY[type];
+                if (Math.random() < cfg.spawnChance) {
+                    spawnEnemy(type.toLowerCase());
+                }
+            });
 
-            // 更新子弹（移除数量限制）
-            bullets.forEach((bullet, index) => {
+            // 更新子弹
+            bullets.forEach((bullet, bIndex) => {
                 bullet.x += bullet.speed * Math.cos(bullet.angle);
                 bullet.y += bullet.speed * Math.sin(bullet.angle);
-                
-                // 子弹边界检测
-                if(bullet.y < 0 || bullet.x < 0 || bullet.x > canvas.width) {
-                    bullets.splice(index, 1);
+
+                // 边界检测
+                if (bullet.y < 0 || bullet.x < 0 || bullet.x > canvas.width) {
+                    bullets.splice(bIndex, 1);
+                    return;
                 }
+
+                // 碰撞检测
+                enemies.forEach((enemy, eIndex) => {
+                    if (checkCollision(bullet, enemy)) {
+                        const dmg = bullet.isExplosive ? 3 : 1;
+                        enemy.currentHP -= dmg;
+                        bullets.splice(bIndex, 1);
+
+                        if (enemy.currentHP <= 0) {
+                            gold += enemy.value;
+                            playerHP = Math.min(100, playerHP + 0.5);
+                            enemies.splice(eIndex, 1);
+                        }
+                    }
+                });
             });
 
             // 更新敌人
             enemies.forEach((enemy, index) => {
-                enemy.y += 2;
-                
-                // 敌人边界检测
-                if(enemy.y > canvas.height) {
+                enemy.y += enemy.speed;
+                if (enemy.y > canvas.height) {
+                    playerHP -= 5;
                     enemies.splice(index, 1);
                 }
-
-                // 碰撞检测
-                bullets.forEach((bullet, bIndex) => {
-                    if(
-                        bullet.x > enemy.x &&
-                        bullet.x < enemy.x + enemy.width &&
-                        bullet.y > enemy.y &&
-                        bullet.y < enemy.y + enemy.height
-                    ) {
-                        enemy.health--;
-                        bullets.splice(bIndex, 1);
-                    }
-                });
-
-                if(enemy.health <= 0) {
-                    enemies.splice(index, 1);
-                }
-            });
-
-            // 自动射击（无限子弹）
-            bullets.push({
-                x: player.x,
-                y: player.y,
-                speed: 20, // 速度提升到20
-                angle: player.angle
             });
 
             // 绘制玩家
             ctx.fillStyle = '#666';
-            ctx.fillRect(player.x - player.width/2, player.y, player.width, player.height);
-            
+            ctx.fillRect(
+                player.x - player.width/2,
+                player.y,
+                player.width,
+                player.height
+            );
+
             // 绘制瞄准线
-            if(isTouching) {
-                ctx.beginPath();
-                ctx.moveTo(player.x, player.y);
-                ctx.lineTo(
-                    player.x + Math.cos(player.angle) * 1000, // 延长瞄准线
-                    player.y + Math.sin(player.angle) * 1000
-                );
-                ctx.strokeStyle = 'rgba(255,255,255,0.5)'; // 更醒目的瞄准线
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(
+                player.x + Math.cos(player.angle) * 1000,
+                player.y + Math.sin(player.angle) * 1000
+            );
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
 
             // 绘制子弹
-            ctx.fillStyle = 'yellow';
             bullets.forEach(bullet => {
+                ctx.fillStyle = bullet.color;
                 ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI*2);
+                ctx.arc(bullet.x, bullet.y, bullet.size, 0, Math.PI*2);
                 ctx.fill();
             });
 
             // 绘制敌人
-            ctx.fillStyle = 'red';
             enemies.forEach(enemy => {
-                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(enemy.x, enemy.y, 30, 30);
+                
+                // 血条
+                ctx.fillStyle = 'red';
+                ctx.fillRect(enemy.x, enemy.y - 5, 30, 3);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(
+                    enemy.x,
+                    enemy.y - 5,
+                    30 * (enemy.currentHP / enemy.hp),
+                    3
+                );
             });
+
+            // 更新UI
+            document.getElementById('hpDisplay').textContent = 
+                `生命值：${Math.min(100, playerHP.toFixed(1))}%`;
+            document.getElementById('goldDisplay').textContent = `金币：${gold}`;
 
             requestAnimationFrame(gameLoop);
         }
