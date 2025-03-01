@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek AI 对话工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .chat-box {
+            height: 60vh;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .message {
+            max-width: 80%;
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 15px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .user-message {
+            background: #3b82f6;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+
+        .ai-message {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        #sendBtn {
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #sendBtn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #64748b;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-box" id="chatBox"></div>
+        <div class="loading" id="loading">AI 正在思考中...</div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="输入你的问题..." autofocus>
+            <button id="sendBtn" onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const loading = document.getElementById('loading');
+        
+        // 维护对话历史
+        let messages = [];
+
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            messageDiv.textContent = content;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const content = userInput.value.trim();
+            if (!content) return;
+
+            // 添加用户消息
+            messages.push({ role: 'user', content });
+            appendMessage('user', content);
+            
+            // 清空输入框
+            userInput.value = '';
+            sendBtn.disabled = true;
+            loading.style.display = 'block';
+
+            try {
+                const response = await fetch('https://api.pearktrue.cn/api/deepseek/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ messages })
+                });
+
+                const data = await response.json();
+                
+                if (data.code === 200) {
+                    messages.push({ role: 'assistant', content: data.message });
+                    appendMessage('ai', data.message);
+                } else {
+                    appendMessage('ai', `错误：${data.msg}`);
+                }
+            } catch (error) {
+                appendMessage('ai', `网络错误：${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                loading.style.display = 'none';
+                userInput.focus();
+            }
+        }
+
+        // 回车发送
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+  </html>
