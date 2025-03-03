@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>视频播放器</title>
+    <title>动画与音频播放器</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,25 +13,25 @@
             height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+            flex-direction: column;
         }
 
-        .video-container {
-            width: 80%;
-            max-width: 800px;
-            background-color: #000;
-            padding: 10px;
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        video {
-            width: 100%;
-            border-radius: 5px;
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
         }
 
         .controls {
-            margin-top: 10px;
-            text-align: center;
+            margin-top: 20px;
         }
 
         button {
@@ -42,6 +42,7 @@
             background-color: #007bff;
             color: white;
             cursor: pointer;
+            font-size: 16px;
         }
 
         button:hover {
@@ -50,41 +51,41 @@
     </style>
 </head>
 <body>
+    <div class="container">
+        <!-- 播放 GIF 动画 -->
+        <img id="gif" src="1.gif" alt="动画" style="display:none;">
+        
+        <!-- 播放 MP3 音频 -->
+        <audio id="audio">
+            <source src="1.mp3" type="audio/mpeg">
+            您的浏览器不支持音频播放。
+        </audio>
 
-
-    <div class="video-container">
-        <video id="myVideo" controls>
-            <source src="114514.mp4" type="video/mp4">
-            您的浏览器不支持HTML5视频标签。
-        </video>
+        <!-- 控制按钮 -->
         <div class="controls">
-            <button id="playPauseBtn">播放/暂停</button>
-            <button id="muteBtn">静音/取消静音</button>
+            <button id="startBtn">开始播放</button>
+            <button id="stopBtn">停止播放</button>
         </div>
     </div>
-    <script>
-        const video = document.getElementById('myVideo');
-        const playPauseBtn = document.getElementById('playPauseBtn');
-        const muteBtn = document.getElementById('muteBtn');
 
-        playPauseBtn.addEventListener('click', () => {
-            if (video.paused) {
-                video.play();
-                playPauseBtn.textContent = '暂停';
-            } else {
-                video.pause();
-                playPauseBtn.textContent = '播放';
-            }
+    <script>
+        // 获取元素
+        const gif = document.getElementById('gif');
+        const audio = document.getElementById('audio');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        // 开始播放
+        startBtn.addEventListener('click', () => {
+            gif.style.display = 'block'; // 显示GIF
+            audio.play(); // 播放音频
         });
 
-        muteBtn.addEventListener('click', () => {
-            if (video.muted) {
-                video.muted = false;
-                muteBtn.textContent = '静音';
-            } else {
-                video.muted = true;
-                muteBtn.textContent = '取消静音';
-            }
+        // 停止播放
+        stopBtn.addEventListener('click', () => {
+            gif.style.display = 'none'; // 隐藏GIF
+            audio.pause(); // 暂停音频
+            audio.currentTime = 0; // 重置音频到开头
         });
     </script>
 </body>
