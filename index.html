@@ -3,90 +3,506 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>动画与音频播放器</title>
+    <title>铅笔整活工具博客</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        :root {
+            /* 半透明色系 */
+            --primary: rgba(37, 99, 235, 0.8);
+            --primary-dark: rgba(29, 78, 216, 0.8);
+            
+            /* 中性色 */
+            --gray-900: rgba(17, 24, 39, 0.9);
+            --gray-700: rgba(55, 65, 81, 0.8);
+            --gray-500: rgba(107, 114, 128, 0.7);
+            --gray-100: rgba(243, 244, 246, 0.9);
+            
+            /* 背景图 */
+            --bg-image: url('bj.png') center/cover no-repeat fixed;
+            
+            /* 间距系统 */
+            --space-xs: 0.5rem;
+            --space-sm: 1rem;
+            --space-md: 1.5rem;
+            --space-lg: 2rem;
+            --space-xl: 3rem;
+            
+            /* 圆角 */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            
+            /* 阴影 */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-inset: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+            
+            /* 主题变量 */
+            --text-color: var(--gray-900);
+            --card-bg: rgba(255, 255, 255, 0.3);
+            --header-bg: rgba(255, 255, 255, 0.3);
+            --btn-bg: rgba(255, 255, 255, 0.3);
+        }
+
+        .dark-mode {
+            --text-color: var(--gray-100);
+            --card-bg: rgba(31, 41, 55, 0.3);
+            --header-bg: rgba(31, 41, 55, 0.3);
+            --btn-bg: rgba(31, 41, 55, 0.3);
+        }
+
+        * {
             margin: 0;
-            background-color: #f0f0f0;
-            flex-direction: column;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-image);
+            color: var(--text-color);
+            line-height: 1.5;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* 页面加载动画 */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .container {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 var(--space-md);
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* 导航栏 */
+        header {
+            background-color: var(--header-bg);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) 0;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            animation: slideIn 0.6s ease 0.1s forwards;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+        }
+
+        /* 主内容区 */
+        .hero {
+            padding: var(--space-xl) 0;
             text-align: center;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 10px;
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            line-height: 1.2;
+            animation: slideIn 0.6s ease 0.2s forwards;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
-        .controls {
-            margin-top: 20px;
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--gray-500);
+            max-width: 700px;
+            margin: 0 auto var(--space-xl);
+            animation: slideIn 0.6s ease 0.3s forwards;
         }
 
-        button {
-            padding: 10px 20px;
-            margin: 5px;
-            border: none;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
+        /* 工具卡片区 */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-md);
+            padding: var(--space-md) 0;
+        }
+
+        .tool-card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(5px);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.3);
             cursor: pointer;
-            font-size: 16px;
+            opacity: 0;
+            transform: translateX(30px);
+            animation: slideIn 0.5s ease forwards;
         }
 
-        button:hover {
-            background-color: #0056b3;
+        .tool-card:nth-child(1) { animation-delay: 0.4s; }
+        .tool-card:nth-child(2) { animation-delay: 0.5s; }
+        .tool-card:nth-child(3) { animation-delay: 0.6s; }
+        .tool-card:nth-child(4) { animation-delay: 0.7s; }
+        .tool-card:nth-child(5) { animation-delay: 0.8s; }
+        .tool-card:nth-child(6) { animation-delay: 0.9s; }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .tool-card:active {
+            box-shadow: var(--shadow-inset);
+        }
+
+        .tool-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .tool-desc {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+            margin-bottom: var(--space-md);
+        }
+
+        /* 页脚 */
+        footer {
+            background-color: var(--header-bg);
+            backdrop-filter: blur(10px);
+            padding: var(--space-md) 0;
+            margin-top: var(--space-xl);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-sm);
+            text-align: center;
+        }
+
+        .footer-link {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.2s ease;
+            background: var(--btn-bg);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .footer-link:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .copyright {
+            color: var(--gray-500);
+            font-size: 0.75rem;
+        }
+
+        /* 暗黑模式切换按钮 */
+        .theme-toggle {
+            background: var(--btn-bg);
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: slideIn 0.6s ease 0.4s forwards;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* 语言切换 */
+        .lang-switcher {
+            position: relative;
+            animation: slideIn 0.6s ease 0.3s forwards;
+        }
+
+        .lang-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            background: var(--btn-bg);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--text-color);
+            cursor: pointer;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(5px);
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .lang-dropdown {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            padding: var(--space-sm);
+            min-width: 120px;
+            display: none;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .lang-option {
+            display: block;
+            padding: var(--space-xs) 0;
+            color: var(--text-color);
+            text-decoration: none;
+            text-align: left;
+            transition: color 0.2s ease;
+        }
+
+        .lang-option:hover {
+            color: var(--primary);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            
+            .navbar {
+                flex-direction: column;
+                gap: var(--space-sm);
+                padding: var(--space-md) 0;
+            }
+            
+            .nav-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 播放 GIF 动画 -->
-        <img id="gif" src="1.gif" alt="动画" style="display:none;">
-        
-        <!-- 播放 MP3 音频 -->
-        <audio id="audio">
-            <source src="1.mp3" type="audio/mpeg">
-            您的浏览器不支持音频播放。
-        </audio>
-
-        <!-- 控制按钮 -->
-        <div class="controls">
-            <button id="startBtn">开始播放</button>
-            <button id="stopBtn">停止播放</button>
+    <header>
+        <div class="container">
+            <div class="navbar">
+                <a href="#" class="logo">
+                    <span data-i18n="brand">铅笔整活工具博客</span>
+                </a>
+                <div class="nav-actions">
+                    <div class="lang-switcher">
+                        <button class="lang-btn" id="langBtn">
+                            <span class="current-lang">中文</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </button>
+                        <div class="lang-dropdown" id="langDropdown">
+                            <a href="#" class="lang-option" data-lang="zh-CN">中文</a>
+                            <a href="#" class="lang-option" data-lang="en-US">English</a>
+                        </div>
+                    </div>
+                    <button class="theme-toggle" aria-label="Toggle theme">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <h1 class="hero-title" data-i18n="title">铅笔整活工具集</h1>
+            <p class="hero-subtitle" data-i18n="subtitle">使你更快失去一个朋友</p>
+        </section>
+
+        <section class="tools-grid">
+            <div class="tool-card" onclick="window.location.href='wjtk.html'">
+                <h3 class="tool-title" data-i18n="tool1.title">文件套壳工具</h3>
+                <p class="tool-desc" data-i18n="tool1.desc">将你想要的文件套上无数层文件夹，使你的朋友难以使用它</p>
+            </div>
+
+            <div class="tool-card" onclick="window.location.href='help.html'">
+                <h3 class="tool-title" data-i18n="tool6.title">帮助中心</h3>
+                <p class="tool-desc" data-i18n="tool6.desc">获取使用指导和常见问题解答</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <a href="https://github.com/asmallpencil/asmallpencil.github.io" class="footer-link" data-i18n="footer.github">本网站由GitHub Pages托管</a>
+                <p class="copyright" data-i18n="footer.copyright">本页面由DeepSeek生成</p>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        // 获取元素
-        const gif = document.getElementById('gif');
-        const audio = document.getElementById('audio');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
+        // 国际化配置
+        const i18n = {
+            'zh-CN': {
+                brand: '铅笔整活工具博客',
+                title: '铅笔整活工具集',
+                subtitle: '使你更快失去一个朋友',
+                'tool1.title': '文件套壳工具',
+                'tool1.desc': '给你想要的文件套上无数层文件夹，使你的朋友难以使用它',
+ 
+                'tool6.title': '帮助中心',
+                'tool6.desc': '获取使用指导和常见问题解答',
+                'footer.github': '本网站由GitHub Pages托管',
+                'footer.copyright': '本页面由DeepSeek生成'
+            },
+            'en-US': {
+                brand: 'Pencil Creative Tools Blog',
+                title: 'Pencil Creative Tools',
+                subtitle: 'Make you lose a friend faster',
+                'tool1.title': 'File Shell Holder',
+                'tool1.desc': 'Put countless layers of folders on the files you want, Make it difficult for your friends to use it',
+ 
+                'tool6.title': 'Help Center',
+                'tool6.desc': 'Guides and FAQs for using our tools',
+                'footer.github': 'Hosted by GitHub Pages',
+                'footer.copyright': 'Generated by DeepSeek'
+            }
+        };
 
-        // 开始播放
-        startBtn.addEventListener('click', () => {
-            gif.style.display = 'block'; // 显示GIF
-            audio.play(); // 播放音频
+        // 当前语言状态
+        let currentLang = localStorage.getItem('language') || 'zh-CN';
+        const langElements = document.querySelectorAll('[data-i18n]');
+        const currentLangDisplay = document.querySelector('.current-lang');
+        const langBtn = document.getElementById('langBtn');
+        const langDropdown = document.getElementById('langDropdown');
+
+        // 应用语言
+        function applyLanguage() {
+            langElements.forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) {
+                    el.textContent = i18n[currentLang][key];
+                }
+            });
+            currentLangDisplay.textContent = currentLang === 'zh-CN' ? '中文' : 'English';
+            localStorage.setItem('language', currentLang);
+        }
+
+        // 切换语言下拉菜单
+        function toggleLangDropdown() {
+            const isDisplayed = langDropdown.style.display === 'block';
+            langDropdown.style.display = isDisplayed ? 'none' : 'block';
+        }
+
+        // 语言切换
+        document.querySelectorAll('.lang-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentLang = option.getAttribute('data-lang');
+                applyLanguage();
+                langDropdown.style.display = 'none';
+            });
         });
 
-        // 停止播放
-        stopBtn.addEventListener('click', () => {
-            gif.style.display = 'none'; // 隐藏GIF
-            audio.pause(); // 暂停音频
-            audio.currentTime = 0; // 重置音频到开头
+        // 点击语言按钮切换下拉菜单
+        langBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleLangDropdown();
         });
+
+        // 点击页面其他区域关闭下拉菜单
+        document.addEventListener('click', () => {
+            langDropdown.style.display = 'none';
+        });
+
+        // 阻止下拉菜单内部的点击事件冒泡
+        langDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // 主题切换
+        const themeToggle = document.querySelector('.theme-toggle');
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            
+            // 保存用户偏好
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            
+            // 更新图标
+            themeToggle.innerHTML = isDark ? 
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>' :
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>';
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // 初始化主题
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            themeToggle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+        }
+
+        // 初始化语言
+        applyLanguage();
+
+        // 初始化背景
+        document.body.style.background = "url('bj.png') center/cover no-repeat fixed";
     </script>
 </body>
 </html>
