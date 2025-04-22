@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件套壳工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .upload-container {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin: 20px 0;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="number"], 
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        .custom-upload {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .custom-upload:hover {
+            background: #45a049;
+        }
+        #fileInput {
+            display: none;
+        }
+        .status {
+            margin-top: 20px;
+            color: #666;
+            min-height: 20px;
+        }
+        .warning {
+            color: #ff4444;
+            margin-top: 5px;
+            font-size: 14px;
+            display: none;
+        }
+        .credits {
+            margin-top: 30px;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-container">
+        <h2>文件套壳工具</h2>
+        
+        <div class="control-group">
+            <label for="zipName">压缩包名称:</label>
+            <input type="text" id="zipName" value="深度文件夹结构">
+        </div>
+        
+        <div class="control-group">
+            <label for="depthLevel">文件夹层数:</label>
+            <input type="number" id="depthLevel" min="1" value="20">
+            <div id="depthWarning" class="warning">
+                ⚠️ 设置过大的层数可能导致浏览器卡顿或崩溃！
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label for="folderNames">文件夹名称 (用逗号分隔):</label>
+            <textarea id="folderNames" placeholder="例如: 文件夹A,文件夹B"></textarea>
+        </div>
+        
+        <label class="custom-upload" for="fileInput">选择文件并生成</label>
+        <input type="file" id="fileInput">
+        <div class="status" id="status"></div>
+        
+        <div class="credits">此工具由 DeepSeek 提供技术支持</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        document.getElementById('depthLevel').addEventListener('input', function() {
+            const warning = document.getElementById('depthWarning');
+            warning.style.display = this.value > 1000 ? 'block' : 'none';
+        });
+
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('status');
+            status.textContent = '正在创建压缩包...';
+            
+            // 获取用户设置（完全不做限制）
+            const depth = Math.max(1, parseInt(document.getElementById('depthLevel').value) || 20);
+            const zipName = document.getElementById('zipName').value.trim() || '深度文件夹结构';
+            const namesInput = document.getElementById('folderNames').value.trim();
+            const folderNames = namesInput ? 
+                namesInput.split(',').map(n => n.trim()).filter(n => n) : 
+                ['文件夹A', '文件夹B'];
+
+            try {
+                const zip = new JSZip();
+                let currentPath = '';
+                
+                // 创建文件夹结构
+                status.textContent = `正在创建 ${depth} 层文件夹结构...`;
+                for (let i = 0; i < depth; i++) {
+                    const dirName = folderNames[Math.floor(Math.random() * folderNames.length)];
+                    currentPath += dirName + '/';
+                    zip.folder(currentPath);
+                    
+                    // 每500层更新一次状态
+                    if (i % 500 === 0) {
+                        status.textContent = `正在创建 ${i+1}/${depth} 层...`;
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+
+                // 添加文件
+                zip.file(currentPath + file.name, file);
+
+                // 使用不压缩模式保证速度
+                status.textContent = '正在生成压缩包...';
+                const content = await zip.generateAsync({
+                    type: "blob",
+                    compression: "STORE",
+                    compressionOptions: { level: 0 }
+                });
+
+                // 创建下载链接
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(content);
+                a.download = zipName + '.zip';
+                a.click();
+
+                status.textContent = '压缩包已生成，开始下载...';
+                setTimeout(() => status.textContent = '', 3000);
+            } catch (error) {
+                status.textContent = '错误: ' + error.message;
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
